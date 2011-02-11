@@ -6,6 +6,12 @@ RID="/root/.ssh/id_dsa_backup_eric"
 RROOT="/"
 RULES="rules"
 PIDFILE="/var/run/backup-$RHOST.pid"
+PREFIX="archive"
+
+SSH=/usr/bin/ssh
+RSYNC=/usr/bin/rsync
+
+cd "$(dirname "$0")"
 
 if [ -e $PIDFILE ]; then
   PID=$(cat $PIDFILE)
@@ -27,8 +33,8 @@ trap __cleanup__ SIGINT
 
 echo $$ > $PIDFILE
 
-CURRENT="archive.current"
-WORK="archive.work"
+CURRENT="$PREFIX.current"
+WORK="$PREFIX.work"
 STAMP=$(date +%Y%m%d-%H%M%S)
 
 RSYNC_EXTRA=""
@@ -42,13 +48,13 @@ if [ -d "$WORK" ]; then
   RSYNC_EXTRA="$RSYNC_EXTRA --delete"
 fi
 
-RSYNC_SSH="ssh -i $RID -l $RUSER"
+RSYNC_SSH="$SSH -i $RID -l $RUSER"
 
 set -x
 
 mkdir -p "$WORK"
 
-rsync -avz -F --include-from=$RULES \
+$RSYNC -avz -F --include-from=$RULES \
   $RSYNC_EXTRA -e "$RSYNC_SSH" \
   $RHOST:$RROOT $WORK
 
@@ -60,10 +66,21 @@ if [ $RC -ne 0 -a $RC -ne 23 -a $RC -ne 24 ]; then
   exit
 fi
 
-NEW="archive.$STAMP"
+NEW="$PREFIX.$STAMP"
 mv "$WORK" "$NEW"
 ln -s "$NEW" "$CURRENT.tmp"
 mv "$CURRENT.tmp" "$CURRENT"
+
+# Some more links
+if [ $(data +%d) = "01" ]; then
+  CHECKPOINT="$PREFIX.monthly.$(date +%Y%m)"
+  [ -e "$CHECKPOINT" ] || ln -s "$NEW" "$CHECKPOINT"
+fi
+
+if [ $(data +%m%d) = "0101" ]; then
+  CHECKPOINT="$PREFIX.yearly.$(date +%Y)"
+  [ -e "$CHECKPOINT" ] || ln -s "$NEW" "$CHECKPOINT"
+fi
 
 __cleanup__
 
