@@ -11,6 +11,38 @@ PREFIX="archive"
 SSH=/usr/bin/ssh
 RSYNC=/usr/bin/rsync
 
+function rotate_archive() {
+  local PREFIX=$1
+  local THIS=$2
+  local NEXT=$3
+  local LIMIT=$4
+  if [ -e "$PREFIX.$NEXT" ]; then
+    if [ $NEXT -lt $LIMIT ]; then
+      rotate_archive "$PREFIX" "$NEXT" $(expr $NEXT + 1) $LIMIT
+    else
+      echo "Removing $PREFIX.$NEXT"
+      rm -f "$PREFIX.$NEXT"
+    fi
+  fi
+  echo "Moving $PREFIX.$THIS to $PREFIX.$NEXT"
+  mv "$PREFIX.$THIS" "$PREFIX.$NEXT"
+}
+
+function after_rsync() {
+  local RC=$1
+  echo "rsync exit code: $RC"
+  if [ $RC -ne 0 -a $RC -ne 23 -a $RC -ne 24 ]; then
+    __cleanup__
+    exit
+  fi
+}
+
+function __cleanup__() {
+  rm -f $PIDFILE
+}
+
+trap __cleanup__ SIGINT
+
 cd "$(dirname "$0")"
 
 if [ -e $PIDFILE ]; then
@@ -24,28 +56,11 @@ if [ -e $PIDFILE ]; then
     rm -f $PIDFILE
   fi
 fi
-
-function __cleanup__() {
-  rm -f $PIDFILE
-}
-
-function after_rsync() {
-  local RC=$1
-  echo "rsync exit code: $RC"
-  if [ $RC -ne 0 -a $RC -ne 23 -a $RC -ne 24 ]; then
-    __cleanup__
-    exit
-  fi
-}
-
-trap __cleanup__ SIGINT
-
 echo $$ > $PIDFILE
 
 CURRENT="$PREFIX.current"
 WORK="$PREFIX.work"
-STAMP=$(date +%Y.%m.%d-%H.%M.%S)
-BYDATE=$(date +%Y/%m/%d/%H.%M.%S)
+BYDATE="$PREFIX/$(date +%Y/%m/%d/%H.%M.%S)"
 
 RSYNC_EXTRA=""
 
@@ -62,6 +77,7 @@ RSYNC_SSH="$SSH -i $RID -l $RUSER"
 
 set -x
 
+mkdir -p $(dirname $BYDATE)
 mkdir -p "$WORK"
 
 [ -e pre-backup-hook.sh ] && . pre-backup-hook.sh
@@ -74,13 +90,9 @@ after_rsync $?
 
 [ -e post-backup-hook.sh ] && . post-backup-hook.sh
 
-NEW="$PREFIX.$STAMP"
-mv "$WORK" "$NEW"
-ln -s "./$NEW" "$CURRENT.tmp"
-mv -T "$CURRENT.tmp" "$CURRENT"
-
-mkdir -p $(dirname $BYDATE)
-ln -s "$PWD/$NEW" "$BYDATE"
+mv "$WORK" "$BYDATE"
+rotate_archive "$PREFIX" "current" 1 10
+ln -s "$BYDATE" "$CURRENT"
 
 __cleanup__
 
