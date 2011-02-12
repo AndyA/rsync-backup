@@ -79,17 +79,6 @@ mv "$WORK" "$NEW"
 ln -s "./$NEW" "$CURRENT.tmp"
 mv -T "$CURRENT.tmp" "$CURRENT"
 
-# Some more links
-if [ $(date +%d) = "01" ]; then
-  CHECKPOINT="$PREFIX.monthly.$(date +%Y-%m)"
-  [ -e "$CHECKPOINT" ] || ln -s "./$NEW" "$CHECKPOINT"
-fi
-
-if [ $(date +%m%d) = "0101" ]; then
-  CHECKPOINT="$PREFIX.yearly.$(date +%Y)"
-  [ -e "$CHECKPOINT" ] || ln -s "./$NEW" "$CHECKPOINT"
-fi
-
 mkdir -p $(dirname $BYDATE)
 ln -s "$PWD/$NEW" "$BYDATE"
 
