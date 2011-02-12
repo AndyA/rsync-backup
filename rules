@@ -4,4 +4,7 @@
 + /etc/***
 + /home/***
 + /root/***
++ /var/
++ /var/lib/
++ /var/lib/mailman/***
 - /***

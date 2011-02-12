@@ -29,19 +29,28 @@ function __cleanup__() {
   rm -f $PIDFILE
 }
 
+function after_rsync() {
+  local RC=$1
+  echo "rsync exit code: $RC"
+  if [ $RC -ne 0 -a $RC -ne 23 -a $RC -ne 24 ]; then
+    __cleanup__
+    exit
+  fi
+}
+
 trap __cleanup__ SIGINT
 
 echo $$ > $PIDFILE
 
 CURRENT="$PREFIX.current"
 WORK="$PREFIX.work"
-STAMP=$(date +%Y%m%d-%H%M%S)
+STAMP=$(date +%Y.%m.%d--%H.%M.%S)
 
 RSYNC_EXTRA=""
 
 if [ -e "$CURRENT" ]; then
   LATEST=$(readlink -f "$CURRENT")
-  RSYNC_EXTRA="$RSYNC_EXTRA --link-dest $PWD/$LATEST"
+  RSYNC_EXTRA="$RSYNC_EXTRA --link-dest $LATEST"
 fi
 
 if [ -d "$WORK" ]; then
@@ -54,33 +63,35 @@ set -x
 
 mkdir -p "$WORK"
 
-$RSYNC -avz -F --include-from=$RULES \
+[ -e pre-backup-hook.sh ] && . pre-backup-hook.sh
+
+$RSYNC -avz -F --include-from=$RULES --numeric-ids \
   $RSYNC_EXTRA -e "$RSYNC_SSH" \
   $RHOST:$RROOT $WORK
 
-RC=$?
+after_rsync $?
 
-echo "rsync exit code: $RC"
-if [ $RC -ne 0 -a $RC -ne 23 -a $RC -ne 24 ]; then
-  __cleanup__
-  exit
-fi
+[ -e post-backup-hook.sh ] && . post-backup-hook.sh
 
 NEW="$PREFIX.$STAMP"
 mv "$WORK" "$NEW"
-ln -s "$NEW" "$CURRENT.tmp"
-mv "$CURRENT.tmp" "$CURRENT"
+ln -s "./$NEW" "$CURRENT.tmp"
+mv -T "$CURRENT.tmp" "$CURRENT"
 
 # Some more links
-if [ $(data +%d) = "01" ]; then
-  CHECKPOINT="$PREFIX.monthly.$(date +%Y%m)"
-  [ -e "$CHECKPOINT" ] || ln -s "$NEW" "$CHECKPOINT"
+if [ $(date +%d) = "01" ]; then
+  CHECKPOINT="$PREFIX.monthly.$(date +%Y-%m)"
+  [ -e "$CHECKPOINT" ] || ln -s "./$NEW" "$CHECKPOINT"
 fi
 
-if [ $(data +%m%d) = "0101" ]; then
+if [ $(date +%m%d) = "0101" ]; then
   CHECKPOINT="$PREFIX.yearly.$(date +%Y)"
-  [ -e "$CHECKPOINT" ] || ln -s "$NEW" "$CHECKPOINT"
+  [ -e "$CHECKPOINT" ] || ln -s "./$NEW" "$CHECKPOINT"
 fi
+
+BYDATE=$(date +%Y/%m/%d/%H.%M.%S)
+mkdir -p $(dirname $BYDATE)
+ln -s "$PWD/$NEW" "$BYDATE"
 
 __cleanup__
 
