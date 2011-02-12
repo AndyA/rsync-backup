@@ -44,7 +44,8 @@ echo $$ > $PIDFILE
 
 CURRENT="$PREFIX.current"
 WORK="$PREFIX.work"
-STAMP=$(date +%Y.%m.%d--%H.%M.%S)
+STAMP=$(date +%Y.%m.%d-%H.%M.%S)
+BYDATE=$(date +%Y/%m/%d/%H.%M.%S)
 
 RSYNC_EXTRA=""
 
@@ -89,7 +90,6 @@ if [ $(date +%m%d) = "0101" ]; then
   [ -e "$CHECKPOINT" ] || ln -s "./$NEW" "$CHECKPOINT"
 fi
 
-BYDATE=$(date +%Y/%m/%d/%H.%M.%S)
 mkdir -p $(dirname $BYDATE)
 ln -s "$PWD/$NEW" "$BYDATE"
 
