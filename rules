@@ -7,4 +7,6 @@
 + /var/
 + /var/lib/
 + /var/lib/mailman/***
++ /var/spool/
++ /var/spool/cyrus/***
 - /***
