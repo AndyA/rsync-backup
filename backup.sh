@@ -7,6 +7,7 @@ RROOT="/"
 RULES="rules"
 PIDFILE="/var/run/backup-$RHOST.pid"
 PREFIX="archive"
+TOUCH="/var/run/backup-$RHOST.done"
 
 SSH=/usr/bin/ssh
 RSYNC=/usr/bin/rsync
@@ -93,6 +94,8 @@ after_rsync $?
 mv "$WORK" "$BYDATE"
 rotate_archive "$PREFIX" "current" 1 10
 ln -s "$BYDATE" "$CURRENT"
+
+touch $TOUCH
 
 __cleanup__
 
