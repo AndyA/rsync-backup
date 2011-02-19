@@ -15,5 +15,11 @@ RC=$?
 /usr/sbin/service mysql-eric-slave start
 after_rsync $RC
 
+mkdir -p mysql-relay-log
+find /var/lib/backup/eric/mysql-relay-log -type f -links 1 \
+  | while read f ; do
+  mv $f mysql-relay-log
+done
+
 # vim:ts=2:sw=2:sts=2:et:ft=sh
 
