@@ -7,7 +7,7 @@ RROOT="/"
 RULES="rules"
 PIDFILE="/var/run/backup-$RHOST.pid"
 PREFIX="archive"
-TOUCH="/var/run/backup-$RHOST.done"
+TOUCH="/var/log/backup-$RHOST.done"
 
 SSH=/usr/bin/ssh
 RSYNC=/usr/bin/rsync
